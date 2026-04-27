@@ -303,11 +303,7 @@ class Search:
             raise AttributeError("No query argument set.")
         
         args = "&" + self._argsToUrlParams(**args)
-        req = requests.get(self._baseurl + f"api/v2/search-suggestions/combined?t={self.q}{args}")
-        if req.status_code == 404:
-            import warnings
-            warnings.warn("Chefkoch search-suggestions API is no longer available (404).", DeprecationWarning, stacklevel=2)
-            return {}
+        req = requests.get(self._baseurl + f"api/v2/search-suggestions/recipes?t={self.q}{args}")
         req.raise_for_status()
         return req.json()
     
