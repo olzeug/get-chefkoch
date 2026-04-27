@@ -5,7 +5,7 @@ s = Search()
 
 
 def test__repr__type():
-    assert isinstance(s.__repr__(), str)
+    assert isinstance(repr(s), str)
     
 def test_argsToUrlParams():
     assert s._argsToUrlParams(t="23", e={}, f=[], i=1, b="test") == 't=23&e={}&f=[]&i=1&b=test'

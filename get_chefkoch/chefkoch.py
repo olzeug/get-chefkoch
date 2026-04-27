@@ -1,15 +1,16 @@
 #!/usr/bin/python3
 
-from get_chefkoch.exceptions import *
+from get_chefkoch.exceptions import ArgumentError, ParserError, InvalidUrl
 
 import logging
-from typing import Union, List
-
-import requests
-from bs4 import BeautifulSoup
+from typing import Union, List, Optional
 from datetime import datetime, timedelta
 import json
 import re
+
+import requests
+from bs4 import BeautifulSoup
+import feedparser
 
 def recipeParameter(func):
     """ Internal decorator for all recipe parameters. """
@@ -67,35 +68,20 @@ class Recipe:
     
     def _durationToTimeDelta(self, duration: str) -> timedelta:
         """
-        Is called to generate a timedelta object from the chefkoch duration.
+        Parses an ISO 8601 duration string into a timedelta object.
         """
         if isinstance(duration, timedelta):
             return duration
-        
-        replacements = {"M":"minutes",
-                        "H": "hours",
-                        "DT": "days"}
-        e = {}
-        i = 0
-        while i < len(duration):
-            letter = duration[i]
-            if letter.isalpha() and (len(duration) == i+1 or not duration[i+1].isalpha()):
-                if not duration[0].isdecimal():
-                    if duration[:i+1] in replacements:
-                        e[repalcements[duration[:i+1]]] = 0
-                else:
-                    for j,l in enumerate(duration[:i+1]):
-                        if not l.isdecimal():
-                            if duration[j:i+1] in replacements:
-                                e[replacements[duration[j:i+1]]] = int(duration[:j])
-                            break
-                
-
-                duration = duration[i+1:]
-                i = 0
-                continue
-            i+=1
-        return timedelta(**e)
+            
+        pattern = re.compile(
+            r'^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?$'
+        )
+        match = pattern.match(duration)
+        if not match:
+            return timedelta()
+            
+        kwargs = {k: int(v) for k, v in match.groupdict().items() if v is not None}
+        return timedelta(**kwargs)
     
     def getMeta(self) -> None:
         """
@@ -114,19 +100,31 @@ class Recipe:
         req.raise_for_status()
         soup = BeautifulSoup(req.text, 'html.parser')
         
-        scripts = soup.findAll("script", type="application/ld+json")
+        scripts = soup.find_all("script", type="application/ld+json")
         
-        if len(scripts) < 2:
+        if not scripts:
             raise ParserError("Data section could not be found.")
             
-        
-        data = scripts[1].string
-        
-        try:
-            self.data = json.loads(data)
-        except json.decoder.JSONDecodeError:
-            logging.error(data)
-            raise ParserError(f"Parsed section is not json-decodeable.")
+        for script in scripts:
+            if not script.string:
+                continue
+            try:
+                parsed_data = json.loads(script.string)
+                if isinstance(parsed_data, dict) and parsed_data.get("@type") == "Recipe":
+                    self.data = parsed_data
+                    break
+                elif isinstance(parsed_data, list):
+                    for item in parsed_data:
+                        if isinstance(item, dict) and item.get("@type") == "Recipe":
+                            self.data = item
+                            break
+                if self.data:
+                    break
+            except json.decoder.JSONDecodeError:
+                continue
+                
+        if not self.data:
+            raise ParserError("Parsed section is not json-decodeable or missing Recipe data.")
         
         self._processData()
         self._gotMeta = True
@@ -256,18 +254,32 @@ class Search:
         
         soup = BeautifulSoup(req.text, 'html.parser')
         
-        scripts = soup.findAll("script", type="application/ld+json")
+        scripts = soup.find_all("script", type="application/ld+json")
         
-        if len(scripts) < 2:
+        if not scripts:
             raise ParserError("Data section could not be found.")
             
-        
-        data = scripts[1].string
-        
-        try:
-            recipes = json.loads(data)["itemListElement"]
-        except json.decoder.JSONDecodeError:
-            raise ParserError("Parsed section is not json-decodeable.")
+        recipes = []
+        for script in scripts:
+            if not script.string:
+                continue
+            try:
+                parsed_data = json.loads(script.string)
+                if isinstance(parsed_data, dict) and "itemListElement" in parsed_data:
+                    recipes = parsed_data["itemListElement"]
+                    break
+                elif isinstance(parsed_data, list):
+                    for item in parsed_data:
+                        if isinstance(item, dict) and "itemListElement" in item:
+                            recipes = item["itemListElement"]
+                            break
+                if recipes:
+                    break
+            except json.decoder.JSONDecodeError:
+                continue
+                
+        if not recipes:
+            raise ParserError("Parsed section is not json-decodeable or missing itemListElement data.")
         
         result = list()
         
@@ -292,12 +304,17 @@ class Search:
         
         args = "&" + self._argsToUrlParams(**args)
         req = requests.get(self._baseurl + f"api/v2/search-suggestions/combined?t={self.q}{args}")
+        if req.status_code == 404:
+            import warnings
+            warnings.warn("Chefkoch search-suggestions API is no longer available (404).", DeprecationWarning, stacklevel=2)
+            return {}
         req.raise_for_status()
         return req.json()
     
     def recipeOfTheDay(self) -> Recipe:
         """ Returns the recipe of the day as Recipe class. """
-        import feedparser
         feed = feedparser.parse(self._baseurl + "rss/rezept-des-tages.php")
+        if not feed or not feed.get('entries'):
+            raise ParserError("Could not parse recipe of the day feed.")
         url = feed['entries'][0]['link']
         return Recipe(url=url)

@@ -25,12 +25,12 @@ def test_getMeta():
     r2.getMeta()
         
 def test__str__type():
-    assert type(r.__str__()) is str
-    assert type(r2.__str__()) is str
+    assert isinstance(str(r), str)
+    assert isinstance(str(r2), str)
     
 def test__repr__type():
-    assert type(r.__repr__()) is str
-    assert type(r2.__repr__()) is str
+    assert isinstance(repr(r), str)
+    assert isinstance(repr(r2), str)
     
 def test_durationToTimeDelta():
     duration = "P0DT0H25M"
