@@ -3,8 +3,13 @@ import pytest
 from get_chefkoch import Recipe, exceptions
 from datetime import timedelta
 
-r = Recipe(url="https://www.chefkoch.de/rezepte/2378411377118199")
-r2 = Recipe(id="2378411377118199")
+@pytest.fixture(scope="module")
+def r():
+    return Recipe(url="https://www.chefkoch.de/rezepte/2378411377118199")
+
+@pytest.fixture(scope="module")
+def r2():
+    return Recipe(id="2378411377118199")
 
 def test_invalid_url():
     with pytest.raises(exceptions.InvalidUrl) as e_info:
@@ -20,19 +25,19 @@ def test_invalid_argument_type():
     with pytest.raises(TypeError) as e_info:
         Recipe(id=0)
         
-def test_getMeta():
+def test_getMeta(r, r2):
     r.getMeta()
     r2.getMeta()
         
-def test__str__type():
-    assert type(r.__str__()) is str
-    assert type(r2.__str__()) is str
+def test__str__type(r, r2):
+    assert isinstance(str(r), str)
+    assert isinstance(str(r2), str)
     
-def test__repr__type():
-    assert type(r.__repr__()) is str
-    assert type(r2.__repr__()) is str
+def test__repr__type(r, r2):
+    assert isinstance(repr(r), str)
+    assert isinstance(repr(r2), str)
     
-def test_durationToTimeDelta():
+def test_durationToTimeDelta(r):
     duration = "P0DT0H25M"
     duration2 = "P10DT9H11M"
     e = r._durationToTimeDelta(duration)
@@ -42,42 +47,42 @@ def test_durationToTimeDelta():
     assert isinstance(e2, timedelta)
     assert e2 == timedelta(days=10, seconds=33060)
 
-def test_recipe_name():
+def test_recipe_name(r, r2):
     assert isinstance(r.name, str)
     assert isinstance(r2.name, str)
     
-def test_recipe_id():
+def test_recipe_id(r, r2):
     assert isinstance(r.id, str)
     assert isinstance(r2.id, str)
     
-def test_recipe_description():
+def test_recipe_description(r, r2):
     assert isinstance(r.description, str)
     assert isinstance(r2.description, str)
     
-def test_recipe_image():
+def test_recipe_image(r, r2):
     assert isinstance(r.image, str)
     assert isinstance(r2.image, str)
     
-def test_recipe_ingredients():
+def test_recipe_ingredients(r, r2):
     assert len(r.ingredients) > 0
     assert len(r2.ingredients) > 0
     
-def test_recipe_category():
+def test_recipe_category(r, r2):
     assert isinstance(r.category, str)
     assert isinstance(r2.category, str)
 
-def test_recipe_prepTime():
+def test_recipe_prepTime(r, r2):
     assert isinstance(r.prepTime, timedelta)
     assert isinstance(r2.prepTime, timedelta)
     
-def test_recipe_totalTime():
+def test_recipe_totalTime(r, r2):
     assert isinstance(r.totalTime, timedelta)
     assert isinstance(r2.totalTime, timedelta)
     
-def test_recipe_cookTime():
+def test_recipe_cookTime(r, r2):
     assert isinstance(r.cookTime, timedelta)
     assert isinstance(r2.cookTime, timedelta)
     
-def test_dataDump():
+def test_dataDump(r, r2):
     assert isinstance(r.data_dump(), dict)
     assert isinstance(r2.data_dump(), dict)

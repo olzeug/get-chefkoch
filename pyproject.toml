@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "get-chefkoch"
+version = "1.1.0"
+description = "Python library to interact with Chefkoch."
+readme = "README.md"
+authors = [
+  { name = "olzeug" }
+]
+license = { text = "MIT" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+keywords = ["Chefkoch", "get_chefkoch"]
+dependencies = [
+    "requests",
+    "feedparser",
+    "beautifulsoup4"
+]
+
+[project.urls]
+Homepage = "https://github.com/olzeug/get_chefkoch"
