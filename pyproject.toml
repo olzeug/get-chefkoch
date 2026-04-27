@@ -25,4 +25,4 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/olzeug/get_chefkoch"
+Homepage = "https://github.com/olzeug/get-chefkoch"
